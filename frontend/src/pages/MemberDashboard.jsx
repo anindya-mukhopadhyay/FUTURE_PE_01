@@ -4,9 +4,10 @@ import { useBooking } from '../context/BookingContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaDumbbell, FaListAlt, FaCalendarCheck, FaFileInvoiceDollar, FaTrashAlt, FaFileDownload, FaClock, FaAppleAlt, FaBarcode, FaCheckCircle, FaSpinner, FaRobot, FaPaperPlane, FaTint, FaHeartbeat } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
+import QrIdCard from '../components/QrIdCard';
 
 export default function MemberDashboard() {
-  const { user, updateProfile, setUser } = useAuth();
+  const { user, updateProfile, setUser, executeGateCheckIn } = useAuth();
   const { bookings, payments, cancelBooking } = useBooking();
 
   const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'bookings', 'workout', 'diet', 'ai-coach', 'invoices', 'metrics', 'attendance'
@@ -196,33 +197,27 @@ export default function MemberDashboard() {
   };
 
   // Barcode gate check-in
-  const triggerBiometricScan = () => {
+  const triggerBiometricScan = async () => {
     setScanningGate(true);
     setScanSuccess(false);
 
-    setTimeout(() => {
-      setScanningGate(false);
+    const res = await executeGateCheckIn(user.id || user._id || 'member_mock_id');
+    setScanningGate(false);
+    
+    if (res.success) {
       setScanSuccess(true);
-      
-      const updatedAttendance = user.attendance ? [...user.attendance] : [];
-      const newAttendanceDate = new Date();
-      updatedAttendance.push(newAttendanceDate);
-      
-      const updatedUser = { ...user, attendance: updatedAttendance };
-      setUser(updatedUser);
-      localStorage.setItem('ntf_user', JSON.stringify(updatedUser));
-
       confetti({
         particleCount: 80,
         spread: 50,
         origin: { y: 0.8 },
         colors: ['#E10600', '#2ecc71', '#FFFFFF']
       });
-
       setTimeout(() => {
         setScanSuccess(false);
       }, 3000);
-    }, 2000);
+    } else {
+      alert(res.message);
+    }
   };
 
   // Calculations
@@ -314,7 +309,7 @@ export default function MemberDashboard() {
             </button>
             <button onClick={() => setActiveTab('attendance')} style={activeTab === 'attendance' ? activeBtnStyle : sidebarBtnStyle}>
               <FaCalendarCheck />
-              Attendance Gate RFID
+              QR Pass & Attendance
             </button>
           </div>
 
@@ -947,83 +942,82 @@ export default function MemberDashboard() {
             </div>
           )}
 
-          {/* RFID Scanner Attendance */}
+          {/* QR Code Pass & Attendance logs */}
           {activeTab === 'attendance' && (
             <div>
-              <h3 style={sectionHeadingStyle}>Gym Biometric Check-In</h3>
-              <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Scan your active digital RFID membership card to record attendance entry logs.</p>
+              <h3 style={sectionHeadingStyle}>Gym Pass & Biometric Check-In</h3>
+              <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Access your dynamic QR membership pass, flip to scan, or check recent foot-traffic entry logs.</p>
 
-              <div className="grid-2" style={{ gap: '30px', alignItems: 'center', marginBottom: '40px' }}>
-                <div style={{
-                  padding: '25px',
-                  background: 'linear-gradient(135deg, #1e1e1e 0%, #0a0a0a 100%)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '16px',
-                  boxShadow: 'var(--glow-shadow)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  minHeight: '220px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#888888', textTransform: 'uppercase', letterSpacing: '1px' }}>NEWTOWN FITNESS</span>
-                      <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>MEMBER ACCESS</h4>
-                    </div>
-                    <FaDumbbell style={{ color: 'var(--primary-red)', fontSize: '1.8rem' }} />
-                  </div>
-
-                  {scanningGate ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
-                      <FaSpinner className="dumbbell-spinner" style={{ fontSize: '2rem', color: 'var(--primary-red)' }} />
-                      <span style={{ fontSize: '0.8rem', color: '#aaaaaa', marginTop: '10px' }}>Scanning RFID Frequency...</span>
-                    </div>
-                  ) : scanSuccess ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
-                      <FaCheckCircle style={{ color: '#2ecc71', fontSize: '2.5rem' }} />
-                      <span style={{ fontSize: '0.85rem', color: '#2ecc71', fontWeight: 700, marginTop: '8px' }}>ACCESS GRANTED</span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '20px 0' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#aaaaaa' }}>
-                        <FaBarcode />
-                        <span>Card: NTF-{user?.fullName.replace(/\s+/g, '').toUpperCase().substr(0,4)}-{user?.mobileNumber?.substr(-4)}</span>
-                      </div>
-                      <span style={{ fontSize: '0.8rem', color: '#666666' }}>Biometric RFID Gate Pass</span>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1c1c1c', paddingTop: '12px' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#FFFFFF' }}>{user?.fullName}</span>
-                    <span style={{ fontSize: '0.75rem', color: user?.membership?.status === 'active' ? '#2ecc71' : 'var(--primary-red)', fontWeight: 700 }}>
-                      {user?.membership?.status === 'active' ? 'STATUS: ACTIVE' : 'STATUS: EXPIRED'}
-                    </span>
-                  </div>
+              <div className="grid-2" style={{ gap: '35px', alignItems: 'center', marginBottom: '40px' }} id="dashboard-grid">
+                {/* 1. DYNAMIC FLIP QR CARD */}
+                <div>
+                  <QrIdCard user={user} />
                 </div>
 
-                <div style={{ textAlign: 'center' }}>
-                  <h4 style={{ fontSize: '1.2rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '10px' }}>RFID Scanning Deck</h4>
+                {/* 2. AUTOMATED SENSOR SCAN TRIGGER */}
+                <div style={{
+                  padding: '25px',
+                  backgroundColor: 'rgba(255,255,255,0.01)',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: '12px',
+                  height: 'fit-content'
+                }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '10px' }}>RFID Scanning Terminal</h4>
                   <p style={{ color: '#aaaaaa', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.6' }}>
-                    Click button below to simulate holding your digital access card directly over the biometric RFID scanner sensor at Newtown Gym main gate.
+                    Hold your digital access QR card directly over our gym gate pass scanner. Clicking the scan button will automatically record your entry logs to Newtown Fitness database.
                   </p>
-                  <button
-                    onClick={triggerBiometricScan}
-                    disabled={scanningGate || user?.membership?.status !== 'active'}
-                    className="btn btn-primary"
-                    style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-                  >
-                    <FaBarcode />
-                    {scanningGate ? 'Transmitting Barcode...' : 'Scan RFID Card (biometric check-in)'}
-                  </button>
+
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <button
+                      onClick={triggerBiometricScan}
+                      disabled={scanningGate || user?.membership?.status !== 'active'}
+                      className="btn btn-primary"
+                      style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                    >
+                      {scanningGate ? (
+                        <>
+                          <FaSpinner className="dumbbell-spinner" />
+                          Scanning Gate Pass...
+                        </>
+                      ) : scanSuccess ? (
+                        <>
+                          <FaCheckCircle style={{ color: '#2ecc71' }} />
+                          Access Granted!
+                        </>
+                      ) : (
+                        <>
+                          <FaQrcode />
+                          Tap to Simulate Scan
+                        </>
+                      )}
+                    </button>
+
+                    <a href="/scanner" target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{
+                      width: '100%',
+                      padding: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      boxSizing: 'border-box'
+                    }}>
+                      <FaBarcode />
+                      Launch Full-Screen Gate Terminal
+                    </a>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '15px' }}>Attendance Logs Calendar</h4>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '15px' }}>Attendance Entry Logs</h4>
                 {(!user?.attendance || user.attendance.length === 0) ? (
-                  <p style={{ color: '#555555', fontSize: '0.9rem' }}>No biometric scan entries recorded for this month.</p>
+                  <p style={{ color: '#555555', fontSize: '0.9rem' }}>No biometric scan entries recorded for this account.</p>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '15px' }}>
                     {user.attendance.map((att, i) => (

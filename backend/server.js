@@ -41,6 +41,7 @@ app.use('/api/trainers', require('./routes/trainerRoutes'));
 app.use('/api/classes', require('./routes/classRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/aux', require('./routes/auxiliaryRoutes'));
 

@@ -26,11 +26,14 @@ import Contact from './pages/Contact';
 import Auth from './pages/Auth';
 
 // Dashboards
+// Dashboards
 import MemberDashboard from './pages/MemberDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import GateScannerTerminal from './pages/GateScannerTerminal';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const isScanner = window.location.pathname === '/scanner';
 
   return (
     <Router>
@@ -39,7 +42,7 @@ export default function App() {
           <LoadingScreen onFinished={() => setLoading(false)} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            <Navbar />
+            {!isScanner && <Navbar />}
             <main style={{ flex: 1 }}>
               <Routes>
                 {/* Public Routes */}
@@ -53,6 +56,7 @@ export default function App() {
                 <Route path="/calculators" element={<Calculators />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/scanner" element={<GateScannerTerminal />} />
 
                 {/* Member Portal (Protected) */}
                 <Route
@@ -75,7 +79,7 @@ export default function App() {
                 />
               </Routes>
             </main>
-            <Footer />
+            {!isScanner && <Footer />}
             <ThemeSwapper />
           </div>
         )}
