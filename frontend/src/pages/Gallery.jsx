@@ -3,6 +3,8 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaEye, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
+
 export default function Gallery() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ export default function Gallery() {
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5002/api/aux/gallery')
+    axios.get(`${API_URL}/aux/gallery`)
       .then(res => {
         if (res.data.success) setItems(res.data.data);
       })
