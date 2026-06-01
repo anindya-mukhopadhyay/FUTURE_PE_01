@@ -8,7 +8,7 @@ import confetti from 'canvas-confetti';
 
 export default function Membership() {
   const { user } = useAuth();
-  const { processCheckout } = useBooking();
+  const { processCheckout, offers } = useBooking();
   const navigate = useNavigate();
 
   const [checkoutPlan, setCheckoutPlan] = useState(null); // { planName, amount }
@@ -56,7 +56,7 @@ export default function Membership() {
   const handlePaymentSuccess = async (paymentDetails) => {
     const res = await processCheckout({
       planType: checkoutPlan.name,
-      amount: checkoutPlan.price,
+      amount: paymentDetails.finalAmount, // Save actual discounted final amount!
       paymentId: paymentDetails.paymentId,
       paymentMethod: paymentDetails.paymentMethod
     });
@@ -226,6 +226,7 @@ export default function Membership() {
             planName={checkoutPlan.name}
             amount={checkoutPlan.price}
             onSuccess={handlePaymentSuccess}
+            offers={offers}
           />
         )}
 
