@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Local env secrets
+.env
+*/.env
+**/.env
+
+# Production builds
+dist/
+*/dist/
+**/dist/
+
+# OS files
+.DS_Store
+**/.DS_Store
+Thumbs.db
