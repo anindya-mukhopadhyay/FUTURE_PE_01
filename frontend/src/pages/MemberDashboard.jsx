@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser, FaDumbbell, FaListAlt, FaCalendarCheck, FaFileInvoiceDollar, FaTrashAlt, FaPen, FaFileDownload, FaClock, FaAppleAlt, FaBarcode, FaCheckCircle, FaSpinner } from 'react-icons/fa';
+import { FaUser, FaDumbbell, FaListAlt, FaCalendarCheck, FaFileInvoiceDollar, FaTrashAlt, FaFileDownload, FaClock, FaAppleAlt, FaBarcode, FaCheckCircle, FaSpinner, FaRobot, FaPaperPlane, FaTint, FaHeartbeat } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
 
 export default function MemberDashboard() {
   const { user, updateProfile, setUser } = useAuth();
   const { bookings, payments, cancelBooking } = useBooking();
 
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'bookings', 'workout', 'diet', 'invoices', 'attendance'
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'bookings', 'workout', 'diet', 'ai-coach', 'invoices', 'metrics', 'attendance'
   const [profileForm, setProfileForm] = useState({
     fullName: user?.fullName || '',
     gender: user?.gender || 'male',
@@ -19,9 +19,9 @@ export default function MemberDashboard() {
   });
 
   const [feedback, setFeedback] = useState('');
-  const [viewInvoice, setViewInvoice] = useState(null); // invoice modal active object
+  const [viewInvoice, setViewInvoice] = useState(null);
 
-  // 1. ADVANCED WORKOUT PLANNER STATE
+  // 1. WORKOUT PLANNER STATE
   const [workoutLog, setWorkoutLog] = useState([
     { id: 'w1', day: 'Monday', exercise: 'Bench Press', sets: 4, reps: 8, weight: 80 },
     { id: 'w2', day: 'Monday', exercise: 'Incline Dumbbell Flyes', sets: 3, reps: 12, weight: 22 },
@@ -29,14 +29,30 @@ export default function MemberDashboard() {
   ]);
   const [newWorkout, setNewWorkout] = useState({ day: 'Monday', exercise: '', sets: 3, reps: 10, weight: 60 });
 
-  // 2. MACRO DIET TRACKER STATE
+  // 2. MACRO DIET & WATER TRACKER STATE
   const [mealLog, setMealLog] = useState([
     { id: 'm1', name: 'Morning Whey & Oats', protein: 35, carbs: 45, fats: 8 },
     { id: 'm2', name: 'Chicken Breast & Brown Rice', protein: 48, carbs: 55, fats: 6 }
   ]);
   const [newMeal, setNewMeal] = useState({ name: '', protein: 25, carbs: 30, fats: 5 });
+  const [waterIntake, setWaterIntake] = useState(1500); // in ml
+  const targetWater = 3000; // in ml
 
-  // 3. VIRTUAL RFID GATE PASS ATTENDANCE STATE
+  // 3. AI FITNESS ASSISTANT STATE
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    {
+      sender: 'ai',
+      text: "Hello! I am Coach Newtown AI, your virtual fitness and nutrition coordinator. Ask me about muscle bulking, caloric cutting, supplements, or HIIT routines!"
+    }
+  ]);
+  const [aiTyping, setAiTyping] = useState(false);
+
+  // 4. BIA BODY DIAGNOSTICS SCANNER STATE
+  const [biaScanning, setBiaScanning] = useState(false);
+  const [biaResult, setBiaResult] = useState(null);
+
+  // 5. VIRTUAL RFID GATE PASS ATTENDANCE STATE
   const [scanningGate, setScanningGate] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
 
@@ -107,17 +123,87 @@ export default function MemberDashboard() {
     setMealLog(mealLog.filter(m => m.id !== id));
   };
 
-  // Virtual RFID Biometric check-in trigger
+  // Water logs increments
+  const addWater = (amount) => {
+    const newVal = Math.min(waterIntake + amount, 5000);
+    setWaterIntake(newVal);
+
+    if (newVal >= targetWater && waterIntake < targetWater) {
+      // Trigger water splash confetti!
+      confetti({
+        particleCount: 100,
+        spread: 60,
+        origin: { y: 0.85 },
+        colors: ['#3498db', '#9be2ff', '#FFFFFF']
+      });
+    }
+  };
+
+  // AI Chat dispatch
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = { sender: 'user', text: chatInput };
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setAiTyping(true);
+
+    // Simulate smart bot response based on triggers
+    setTimeout(() => {
+      let botResponse = '';
+      const text = chatInput.toLowerCase();
+
+      if (text.includes('bulk') || text.includes('gain')) {
+        botResponse = "For a successful athletic bulking cycle, target a mild caloric surplus of 300-500 kcal above maintenance, keeping proteins high (2.0g per kg of bodyweight). Structure heavy workouts around compound compound lifts (Squats, Bench, Deadlifts) 4-5 times weekly.";
+      } else if (text.includes('cut') || text.includes('lose') || text.includes('fat') || text.includes('loss')) {
+        botResponse = "To maximize fat loss while maintaining lean mass: 1. Maintain a caloric deficit of 400-500 kcal. 2. Push protein ratios up to 2.2g per kg. 3. Continue lifting heavy resistance weights to signal protein retention. 4. Add 2-3 HIIT intervals weekly.";
+      } else if (text.includes('supplement') || text.includes('creatine') || text.includes('whey')) {
+        botResponse = "Top scientifically backed athletic supplements: 1. Whey Isolate (excellent for meeting protein splits). 2. Creatine Monohydrate (5g daily for power outputs and cell volumization). 3. Caffeine / Beta-Alanine (pre-workout focus and lactic buffers). whole-foods always come first!";
+      } else if (text.includes('water') || text.includes('hydration')) {
+        botResponse = "Hydration splits determine cognitive and muscular output. Aim for 3-4 liters daily. Consume an extra 500ml for every 45 minutes of active, high-intensity sweating floors.";
+      } else {
+        botResponse = "That is an excellent training query! For physical re-composition, consistency is absolute. Focus on tracking daily macros, maintaining a progressive weight routine, scanning your biometric BIA stats, and getting 7-8 hours of deep physical rest. Let me know how else I can optimize your workouts today!";
+      }
+
+      setChatMessages(prev => [...prev, { sender: 'ai', text: botResponse }]);
+      setAiTyping(false);
+    }, 1200);
+  };
+
+  // Biometric BIA Scanner
+  const triggerBiaScan = () => {
+    setBiaScanning(true);
+    setBiaResult(null);
+
+    setTimeout(() => {
+      setBiaScanning(false);
+      setBiaResult({
+        muscleMass: 44.2, // %
+        bodyFat: 15.8, // %
+        visceralFat: 4, // index
+        metabolicAge: 21, // years
+        hydration: 63.4 // %
+      });
+
+      confetti({
+        particleCount: 70,
+        spread: 40,
+        origin: { y: 0.8 },
+        colors: ['#f1c40f', '#e67e22', '#FFFFFF']
+      });
+    }, 2500);
+  };
+
+  // Barcode gate check-in
   const triggerBiometricScan = () => {
     setScanningGate(true);
     setScanSuccess(false);
 
-    // Simulate RFID scanning bar
     setTimeout(() => {
       setScanningGate(false);
       setScanSuccess(true);
       
-      // Update attendance array locally
       const updatedAttendance = user.attendance ? [...user.attendance] : [];
       const newAttendanceDate = new Date();
       updatedAttendance.push(newAttendanceDate);
@@ -139,13 +225,13 @@ export default function MemberDashboard() {
     }, 2000);
   };
 
-  // Macro progress totals calculation
+  // Calculations
   const totalProtein = mealLog.reduce((acc, m) => acc + m.protein, 0);
   const totalCarbs = mealLog.reduce((acc, m) => acc + m.carbs, 0);
   const totalFats = mealLog.reduce((acc, m) => acc + m.fats, 0);
   const totalLoggedCalories = Math.round((totalProtein * 4) + (totalCarbs * 4) + (totalFats * 9));
 
-  const targetProtein = 160; // default macros target
+  const targetProtein = 160;
   const targetCarbs = 200;
   const targetFats = 70;
   const targetCalories = 2100;
@@ -158,7 +244,7 @@ export default function MemberDashboard() {
     }}>
       <div className="container" style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '30px' }} id="dashboard-grid">
         
-        {/* LEFT COLUMN: SIDEBAR */}
+        {/* SIDEBAR HUB */}
         <div className="glass-card" style={{ padding: '20px', height: 'fit-content' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -202,32 +288,30 @@ export default function MemberDashboard() {
               <FaUser />
               Profile
             </button>
-
             <button onClick={() => setActiveTab('bookings')} style={activeTab === 'bookings' ? activeBtnStyle : sidebarBtnStyle}>
               <FaDumbbell />
               Bookings ({bookings.filter(b => b.status === 'booked').length})
             </button>
-
             <button onClick={() => setActiveTab('workout')} style={activeTab === 'workout' ? activeBtnStyle : sidebarBtnStyle}>
               <FaDumbbell style={{ color: '#f1c40f' }} />
               Workout Split Builder
             </button>
-
             <button onClick={() => setActiveTab('diet')} style={activeTab === 'diet' ? activeBtnStyle : sidebarBtnStyle}>
               <FaAppleAlt style={{ color: '#2ecc71' }} />
-              Macro Meal Tracker
+              Diet & Hydration
             </button>
-
+            <button onClick={() => setActiveTab('ai-coach')} style={activeTab === 'ai-coach' ? activeBtnStyle : sidebarBtnStyle}>
+              <FaRobot style={{ color: '#00D2FF' }} />
+              Coach Newtown AI
+            </button>
             <button onClick={() => setActiveTab('invoices')} style={activeTab === 'invoices' ? activeBtnStyle : sidebarBtnStyle}>
               <FaFileInvoiceDollar />
               Invoices ({payments.length})
             </button>
-
             <button onClick={() => setActiveTab('metrics')} style={activeTab === 'metrics' ? activeBtnStyle : sidebarBtnStyle}>
               <FaListAlt />
               Metrics & Progress
             </button>
-
             <button onClick={() => setActiveTab('attendance')} style={activeTab === 'attendance' ? activeBtnStyle : sidebarBtnStyle}>
               <FaCalendarCheck />
               Attendance Gate RFID
@@ -236,7 +320,7 @@ export default function MemberDashboard() {
 
         </div>
 
-        {/* RIGHT COLUMN: DETAIL DESK */}
+        {/* RIGHT DISPLAY PANEL */}
         <div className="glass-card" style={{ padding: '35px' }}>
           
           {feedback && (
@@ -382,13 +466,12 @@ export default function MemberDashboard() {
             </div>
           )}
 
-          {/* 1. ADVANCED INTERACTIVE WORKOUT PLANNER */}
+          {/* WORKOUT PLANNER */}
           {activeTab === 'workout' && (
             <div>
               <h3 style={sectionHeadingStyle}>Workout Split Builder</h3>
               <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Construct daily exercise splits, sets, reps, and track personal record weights.</p>
 
-              {/* ADD EXERCISE ROUTINE FORM */}
               <form onSubmit={handleAddWorkout} style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr',
@@ -434,7 +517,6 @@ export default function MemberDashboard() {
                 </div>
               </form>
 
-              {/* LIST DISPLAY */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
                   const dayExercises = workoutLog.filter(w => w.day === day);
@@ -462,85 +544,128 @@ export default function MemberDashboard() {
                   );
                 })}
               </div>
-
             </div>
           )}
 
-          {/* 2. ADVANCED INTERACTIVE MACRO DIET MEAL TRACKER */}
+          {/* DIET & HYDRATION TRACKER */}
           {activeTab === 'diet' && (
             <div>
-              <h3 style={sectionHeadingStyle}>Macro Meal Planner</h3>
-              <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Log custom meals, track proteins/carbohydrates/fats grams, and compare calories metrics.</p>
+              <h3 style={sectionHeadingStyle}>Diet & Hydration Tracker</h3>
+              <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Log calories macros and track daily water goals with high-fidelity indicators.</p>
 
-              {/* MACROS CHARTS DIALS ROW */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '35px' }} className="profile-form-grid">
+              {/* NUTRITION & HYDRATION GRIDS */}
+              <div className="grid-2" style={{ gap: '30px', marginBottom: '40px' }}>
                 
-                {/* Calories Dial */}
-                <div style={macroBoxStyle('#E10600')}>
-                  <span style={{ fontSize: '0.75rem', color: '#aaaaaa', textTransform: 'uppercase' }}>Daily Calories</span>
-                  <p style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '5px' }}>{totalLoggedCalories} / {targetCalories}</p>
-                  <span style={{ fontSize: '0.7rem', color: '#666666' }}>kcal Counter</span>
+                {/* MACRO BREAKDOWN MODULE */}
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '15px' }}>Daily Macros Budget</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                    <div style={macroBoxStyle('#E10600')}>
+                      <span style={{ fontSize: '0.7rem', color: '#888888', textTransform: 'uppercase' }}>Calories</span>
+                      <p style={{ fontSize: '1.25rem', fontWeight: 900, marginTop: '3px' }}>{totalLoggedCalories} / {targetCalories} kcal</p>
+                    </div>
+                    <div style={macroBoxStyle('#3498db')}>
+                      <span style={{ fontSize: '0.7rem', color: '#888888', textTransform: 'uppercase' }}>Protein</span>
+                      <p style={{ fontSize: '1.25rem', fontWeight: 900, marginTop: '3px' }}>{totalProtein}g / {targetProtein}g</p>
+                    </div>
+                    <div style={macroBoxStyle('#f1c40f')}>
+                      <span style={{ fontSize: '0.7rem', color: '#888888', textTransform: 'uppercase' }}>Carbs</span>
+                      <p style={{ fontSize: '1.25rem', fontWeight: 900, marginTop: '3px' }}>{totalCarbs}g / {targetCarbs}g</p>
+                    </div>
+                    <div style={macroBoxStyle('#2ecc71')}>
+                      <span style={{ fontSize: '0.7rem', color: '#888888', textTransform: 'uppercase' }}>Fats</span>
+                      <p style={{ fontSize: '1.25rem', fontWeight: 900, marginTop: '3px' }}>{totalFats}g / {targetFats}g</p>
+                    </div>
+                  </div>
+
+                  {/* Log Meal Form */}
+                  <form onSubmit={handleAddMeal} style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    padding: '15px',
+                    backgroundColor: 'rgba(255,255,255,0.01)',
+                    border: '1px solid #1c1c1c',
+                    borderRadius: '8px'
+                  }}>
+                    <input type="text" placeholder="Meal Description" className="form-input" required style={{ padding: '8px' }} value={newMeal.name} onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                      <input type="number" placeholder="Protein (g)" className="form-input" required style={{ padding: '8px', textAlign: 'center' }} value={newMeal.protein} onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })} />
+                      <input type="number" placeholder="Carbs (g)" className="form-input" required style={{ padding: '8px', textAlign: 'center' }} value={newMeal.carbs} onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })} />
+                      <input type="number" placeholder="Fats (g)" className="form-input" required style={{ padding: '8px', textAlign: 'center' }} value={newMeal.fats} onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })} />
+                    </div>
+                    <button type="submit" className="btn btn-primary" style={{ padding: '8px', fontSize: '0.85rem' }}>Log Meal</button>
+                  </form>
                 </div>
 
-                {/* Protein */}
-                <div style={macroBoxStyle('#3498db')}>
-                  <span style={{ fontSize: '0.75rem', color: '#aaaaaa', textTransform: 'uppercase' }}>Protein</span>
-                  <p style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '5px' }}>{totalProtein}g / {targetProtein}g</p>
-                  <span style={{ fontSize: '0.7rem', color: '#666666' }}>Build Muscle</span>
-                </div>
+                {/* ANIMATED HYDRATION GAUGE */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '15px', width: '100%', textAlign: 'left' }}>
+                    Hydration Tracker
+                  </h4>
+                  
+                  {/* GLASS GAUGE */}
+                  <div style={{
+                    width: '120px',
+                    height: '200px',
+                    border: '4px solid #333333',
+                    borderTop: 'none',
+                    borderRadius: '0 0 25px 25px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    backgroundColor: 'rgba(255,255,255,0.02)',
+                    boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.5)',
+                    marginBottom: '20px'
+                  }}>
+                    {/* Water Level */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${Math.min((waterIntake / targetWater) * 100, 100)}%`,
+                      backgroundColor: 'rgba(52, 152, 219, 0.75)',
+                      boxShadow: '0 0 20px #3498db, inset 0 0 10px rgba(255,255,255,0.5)',
+                      transition: 'height 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }} />
+                    
+                    {/* Dynamic text inside glass */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 10,
+                      textAlign: 'center',
+                      pointerEvents: 'none'
+                    }}>
+                      <FaTint style={{ color: '#FFFFFF', fontSize: '1.8rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
+                      <strong style={{ display: 'block', fontSize: '1.1rem', color: '#FFFFFF', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+                        {waterIntake} ml
+                      </strong>
+                    </div>
+                  </div>
 
-                {/* Carbs */}
-                <div style={macroBoxStyle('#f1c40f')}>
-                  <span style={{ fontSize: '0.75rem', color: '#aaaaaa', textTransform: 'uppercase' }}>Carbs</span>
-                  <p style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '5px' }}>{totalCarbs}g / {targetCarbs}g</p>
-                  <span style={{ fontSize: '0.7rem', color: '#666666' }}>Energy Split</span>
-                </div>
-
-                {/* Fats */}
-                <div style={macroBoxStyle('#2ecc71')}>
-                  <span style={{ fontSize: '0.75rem', color: '#aaaaaa', textTransform: 'uppercase' }}>Fats</span>
-                  <p style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '5px' }}>{totalFats}g / {targetFats}g</p>
-                  <span style={{ fontSize: '0.7rem', color: '#666666' }}>Hormonal Health</span>
+                  {/* Add buttons */}
+                  <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                    <button onClick={() => addWater(250)} className="btn btn-secondary" style={{ flex: 1, padding: '10px 5px', fontSize: '0.8rem', borderColor: '#3498db', color: '#3498db' }}>
+                      + 250ml Glass
+                    </button>
+                    <button onClick={() => addWater(750)} className="btn btn-primary" style={{ flex: 1, padding: '10px 5px', fontSize: '0.8rem', backgroundColor: '#3498db', boxShadow: '0 4px 10px rgba(52,152,219,0.2)' }}>
+                      + 750ml Bottle
+                    </button>
+                  </div>
+                  {waterIntake >= targetWater && (
+                    <span style={{ color: '#2ecc71', fontWeight: 700, fontSize: '0.8rem', marginTop: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      💧 Hydration Target Achieved!
+                    </span>
+                  )}
                 </div>
 
               </div>
 
-              {/* LOG MEAL FORM */}
-              <form onSubmit={handleAddMeal} style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-                gap: '12px',
-                padding: '20px',
-                backgroundColor: 'rgba(255,255,255,0.02)',
-                border: '1px solid #1c1c1c',
-                borderRadius: '8px',
-                marginBottom: '30px'
-              }} className="profile-form-grid">
-                <div className="form-group">
-                  <label className="form-label">Meal Description</label>
-                  <input type="text" placeholder="e.g. Scrambled Eggs & Toast" className="form-input" required style={{ padding: '10px' }} value={newMeal.name} onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Protein (g)</label>
-                  <input type="number" className="form-input" required style={{ padding: '10px', textAlign: 'center' }} value={newMeal.protein} onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Carbs (g)</label>
-                  <input type="number" className="form-input" required style={{ padding: '10px', textAlign: 'center' }} value={newMeal.carbs} onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Fats (g)</label>
-                  <input type="number" className="form-input" required style={{ padding: '10px', textAlign: 'center' }} value={newMeal.fats} onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })} />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px 10px', fontSize: '0.8rem' }}>
-                    Log
-                  </button>
-                </div>
-              </form>
-
-              {/* MEALS LIST */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* LIST DISPLAY */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {mealLog.map((m) => (
                   <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', backgroundColor: 'rgba(255,255,255,0.01)', border: '1px solid #141414', borderRadius: '8px' }}>
                     <div>
@@ -560,7 +685,81 @@ export default function MemberDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
 
+          {/* 3. COACH NEWTOWN AI FIT BOT */}
+          {activeTab === 'ai-coach' && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '480px', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={sectionHeadingStyle}>Coach Newtown AI</h3>
+                <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '20px' }}>Consult your virtual trainer splits for nutrition splits, cutting ratios, or heavy muscle progressions.</p>
+              </div>
+
+              {/* CHAT DISPLAY SCREEN */}
+              <div style={{
+                flex: 1,
+                backgroundColor: '#0c0c0c',
+                border: '1px solid #1c1c1c',
+                borderRadius: '10px',
+                padding: '20px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px',
+                marginBottom: '20px'
+              }}>
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} style={{
+                    display: 'flex',
+                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '80%',
+                    backgroundColor: msg.sender === 'user' ? 'rgba(225,6,0,0.1)' : 'rgba(255,255,255,0.03)',
+                    border: '1px solid',
+                    borderColor: msg.sender === 'user' ? 'var(--primary-red)' : '#222222',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.5',
+                    color: '#FFFFFF'
+                  }}>
+                    {msg.text}
+                  </div>
+                ))}
+
+                {aiTyping && (
+                  <div style={{
+                    alignSelf: 'flex-start',
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                    border: '1px solid #222222',
+                    padding: '10px 16px',
+                    borderRadius: '12px',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    color: '#aaaaaa'
+                  }}>
+                    <FaSpinner className="dumbbell-spinner" style={{ fontSize: '0.9rem' }} />
+                    <span>Coach Newtown is typing recommendations...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* INPUT SEND PANEL */}
+              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="Ask about: bulking tips, supplement guide, fat loss cut formulas..."
+                  className="form-input"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                />
+                <button type="submit" className="btn btn-primary" style={{ padding: '12px 25px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaPaperPlane />
+                  Send
+                </button>
+              </form>
             </div>
           )}
 
@@ -621,31 +820,82 @@ export default function MemberDashboard() {
             </div>
           )}
 
+          {/* METRICS & BIO BIA BODY SCANNER */}
           {activeTab === 'metrics' && (
             <div>
-              <h3 style={sectionHeadingStyle}>Metrics & Progress Tracker</h3>
-              <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Dynamically gauge physical parameters. Custom fitness and diet split blueprints are updated by trainers.</p>
+              <h3 style={sectionHeadingStyle}>Metrics & BIA Diagnostics</h3>
+              <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Track daily weight logger logs and perform simulated Bio-electrical Impedance Analysis scanner scans.</p>
 
-              <div className="grid-2" style={{ marginBottom: '30px' }}>
-                <div style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid #1a1a1a' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '10px', color: 'var(--primary-red)' }}>
-                    Active Workout Split
-                  </h4>
-                  <p style={{ fontSize: '0.9rem', color: '#cccccc', lineHeight: '1.6' }}>{user?.workoutPlan}</p>
+              {/* BIO BIA SCANNER SECTION */}
+              <div style={{
+                padding: '25px',
+                backgroundColor: 'rgba(255,255,255,0.01)',
+                border: '1px solid #1a1a1a',
+                borderRadius: '12px',
+                marginBottom: '35px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                  <FaHeartbeat style={{ color: 'var(--primary-red)', fontSize: '1.5rem' }} />
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 700, textTransform: 'uppercase' }}>BIA Body Diagnostics Deck</h4>
                 </div>
 
-                <div style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid #1a1a1a' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '10px', color: 'var(--primary-red)' }}>
-                    Assigned Diet Blueprint
-                  </h4>
-                  <p style={{ fontSize: '0.9rem', color: '#cccccc', lineHeight: '1.6' }}>{user?.dietPlan}</p>
-                </div>
+                {biaScanning ? (
+                  <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                    <FaSpinner className="dumbbell-spinner" style={{ fontSize: '2.5rem', color: '#f1c40f', marginBottom: '15px' }} />
+                    <p style={{ color: '#f1c40f', fontWeight: 600, fontSize: '0.95rem' }}>Scanning Visceral Lipid Levels & Hydration splits...</p>
+                    <div style={{ width: '200px', height: '4px', backgroundColor: '#222', margin: '15px auto 0 auto', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div className="skeleton" style={{ width: '100%', height: '100%' }} />
+                    </div>
+                  </div>
+                ) : biaResult ? (
+                  <div>
+                    {/* Diagnostic scoreboard grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px', marginBottom: '20px' }} className="profile-form-grid">
+                      <div style={biaMetricBoxStyle('#3498db')}>
+                        <span style={{ fontSize: '0.7rem', color: '#888888' }}>Muscle Mass</span>
+                        <h5 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '3px' }}>{biaResult.muscleMass}%</h5>
+                        <span style={{ fontSize: '0.65rem', color: '#2ecc71' }}>Athletic Split</span>
+                      </div>
+                      <div style={biaMetricBoxStyle('#e67e22')}>
+                        <span style={{ fontSize: '0.7rem', color: '#888888' }}>Body Fat</span>
+                        <h5 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '3px' }}>{biaResult.bodyFat}%</h5>
+                        <span style={{ fontSize: '0.65rem', color: '#3498db' }}>Fitness Range</span>
+                      </div>
+                      <div style={biaMetricBoxStyle('#9b59b6')}>
+                        <span style={{ fontSize: '0.7rem', color: '#888888' }}>Visceral Fat</span>
+                        <h5 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '3px' }}>Lvl {biaResult.visceralFat}</h5>
+                        <span style={{ fontSize: '0.65rem', color: '#2ecc71' }}>Optimal healthy</span>
+                      </div>
+                      <div style={biaMetricBoxStyle('#f1c40f')}>
+                        <span style={{ fontSize: '0.7rem', color: '#888888' }}>Metabolic Age</span>
+                        <h5 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '3px' }}>{biaResult.metabolicAge} Yrs</h5>
+                        <span style={{ fontSize: '0.65rem', color: '#2ecc71' }}>Younger (PR)</span>
+                      </div>
+                      <div style={biaMetricBoxStyle('#00D2FF')}>
+                        <span style={{ fontSize: '0.7rem', color: '#888888' }}>Hydration Index</span>
+                        <h5 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '3px' }}>{biaResult.hydration}%</h5>
+                        <span style={{ fontSize: '0.65rem', color: '#2ecc71' }}>Optimal</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <button onClick={triggerBiaScan} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>
+                        Scan Again
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <p style={{ color: '#aaaaaa', fontSize: '0.85rem', marginBottom: '20px' }}>No active biometric diagnostics record scanned for today.</p>
+                    <button onClick={triggerBiaScan} className="btn btn-primary" style={{ padding: '10px 25px', fontSize: '0.9rem' }}>
+                      Initiate Biometric BIA Full Body Scan
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* DYNAMIC PROGRESS CHART */}
+              {/* Weight Logger Trends */}
               <div>
                 <h4 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '15px' }}>Weight Logger Trends</h4>
-                
                 {(!user?.metrics?.weightLogs || user.metrics.weightLogs.length === 0) ? (
                   <p style={{ color: '#555555', fontSize: '0.85rem' }}>No logged weight entries found. Go to profile tab to log your current weight!</p>
                 ) : (
@@ -694,19 +944,16 @@ export default function MemberDashboard() {
                   </div>
                 )}
               </div>
-
             </div>
           )}
 
-          {/* 3. VIRTUAL RFID BIOMETRIC GATE ATTENDANCE SCANNER */}
+          {/* RFID Scanner Attendance */}
           {activeTab === 'attendance' && (
             <div>
               <h3 style={sectionHeadingStyle}>Gym Biometric Check-In</h3>
               <p style={{ color: '#888888', fontSize: '0.85rem', marginBottom: '25px' }}>Scan your active digital RFID membership card to record attendance entry logs.</p>
 
               <div className="grid-2" style={{ gap: '30px', alignItems: 'center', marginBottom: '40px' }}>
-                
-                {/* RFID GLOWING VIRTUAL CARD */}
                 <div style={{
                   padding: '25px',
                   background: 'linear-gradient(135deg, #1e1e1e 0%, #0a0a0a 100%)',
@@ -756,7 +1003,6 @@ export default function MemberDashboard() {
                   </div>
                 </div>
 
-                {/* BIOMETRIC ACTION CONTROLLER */}
                 <div style={{ textAlign: 'center' }}>
                   <h4 style={{ fontSize: '1.2rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '10px' }}>RFID Scanning Deck</h4>
                   <p style={{ color: '#aaaaaa', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.6' }}>
@@ -771,16 +1017,9 @@ export default function MemberDashboard() {
                     <FaBarcode />
                     {scanningGate ? 'Transmitting Barcode...' : 'Scan RFID Card (biometric check-in)'}
                   </button>
-                  {user?.membership?.status !== 'active' && (
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--primary-red)', marginTop: '8px', fontWeight: 600 }}>
-                      Active subscription required to scan RFID card.
-                    </span>
-                  )}
                 </div>
-
               </div>
 
-              {/* ATTENDANCE CALENDAR GRIDS */}
               <div>
                 <h4 style={{ fontSize: '1.1rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '15px' }}>Attendance Logs Calendar</h4>
                 {(!user?.attendance || user.attendance.length === 0) ? (
@@ -833,7 +1072,6 @@ export default function MemberDashboard() {
           }}>
             <div className="glass-card" style={{ width: '100%', maxWidth: '600px', padding: 0 }}>
               
-              {/* PRINTABLE AREA */}
               <div id="invoice-print-area" style={{ padding: '40px', backgroundColor: '#FFFFFF', color: '#000000', borderRadius: '12px 12px 0 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000000', paddingBottom: '20px' }}>
                   <div>
@@ -890,7 +1128,6 @@ export default function MemberDashboard() {
                 </div>
               </div>
 
-              {/* MODAL CONTROL ACTIONS */}
               <div style={{ display: 'flex', gap: '15px', padding: '20px', backgroundColor: '#0c0c0c', borderTop: '1px solid #222222', borderRadius: '0 0 12px 12px' }}>
                 <button onClick={printInvoice} className="btn btn-primary" style={{ flex: 1, padding: '10px' }}>
                   Print PDF Receipt
@@ -995,6 +1232,15 @@ const typeBadgeStyle = (type) => ({
 
 const macroBoxStyle = (color) => ({
   padding: '15px',
+  backgroundColor: 'rgba(255,255,255,0.01)',
+  border: '1px solid #1a1a1a',
+  borderTop: `3px solid ${color}`,
+  borderRadius: '8px',
+  textAlign: 'center'
+});
+
+const biaMetricBoxStyle = (color) => ({
+  padding: '12px',
   backgroundColor: 'rgba(255,255,255,0.01)',
   border: '1px solid #1a1a1a',
   borderTop: `3px solid ${color}`,
